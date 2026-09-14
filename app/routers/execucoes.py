@@ -11,7 +11,7 @@ def listar_execucoes(request: Request):
     with db_session() as conn:
         execucoes = conn.execute("SELECT * FROM execucoes ORDER BY iniciado_em DESC").fetchall()
 
-    return templates.TemplateResponse("execucoes.html", {"request": request, "execucoes": execucoes})
+    return templates.TemplateResponse(request, "execucoes.html", {"execucoes": execucoes})
 
 
 @router.get("/execucoes/{execucao_id}")
@@ -23,7 +23,7 @@ def detalhe_execucao(request: Request, execucao_id: int):
         ).fetchall()
 
     return templates.TemplateResponse(
-        "execucao_detalhe.html", {"request": request, "execucao": execucao, "eventos": eventos}
+        request, "execucao_detalhe.html", {"execucao": execucao, "eventos": eventos}
     )
 
 

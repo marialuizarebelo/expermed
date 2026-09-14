@@ -49,8 +49,9 @@ def listar_empresas(request: Request, status: str | None = None, responsavel: st
         empresas = conn.execute(query, params).fetchall()
 
     return templates.TemplateResponse(
+        request,
         "empresas.html",
-        {"request": request, "empresas": empresas, "status_filtro": status, "responsavel_filtro": responsavel},
+        {"empresas": empresas, "status_filtro": status, "responsavel_filtro": responsavel},
     )
 
 
@@ -68,9 +69,9 @@ def detalhe_empresa(request: Request, empresa_id: int):
         ).fetchone()
 
     return templates.TemplateResponse(
+        request,
         "empresa_detalhe.html",
         {
-            "request": request,
             "empresa": empresa,
             "processos": processos,
             "contatos": contatos,

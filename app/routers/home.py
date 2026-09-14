@@ -19,9 +19,9 @@ def home(request: Request):
         ).fetchall()
 
     return templates.TemplateResponse(
+        request,
         "home.html",
         {
-            "request": request,
             "total_empresas": total_empresas,
             "qualificadas": qualificadas,
             "mensagens_geradas": mensagens_geradas,

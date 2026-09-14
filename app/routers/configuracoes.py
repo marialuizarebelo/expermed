@@ -14,9 +14,9 @@ def configuracoes(request: Request):
         bloqueios = conn.execute("SELECT * FROM lista_bloqueio ORDER BY adicionado_em DESC").fetchall()
 
     return templates.TemplateResponse(
+        request,
         "configuracoes.html",
         {
-            "request": request,
             "bloqueios": bloqueios,
             "assuntos_interesse": ASSUNTOS_INTERESSE,
             "volume_minimo_total": VOLUME_MINIMO_TOTAL,

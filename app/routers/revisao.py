@@ -26,7 +26,7 @@ def fila_revisao(request: Request, responsavel: str | None = None):
         mensagens = conn.execute(query, params).fetchall()
 
     return templates.TemplateResponse(
-        "revisao.html", {"request": request, "mensagens": mensagens, "responsavel_filtro": responsavel}
+        request, "revisao.html", {"mensagens": mensagens, "responsavel_filtro": responsavel}
     )
 
 

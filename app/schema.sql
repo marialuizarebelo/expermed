@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS empresas (
     razao_social TEXT NOT NULL,
     uf TEXT,
     segmento TEXT,
+    site TEXT,
+    pipedrive_org_id TEXT,
     total_processos_relevantes INTEGER DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'novo' CHECK (status IN ('novo', 'qualificada', 'descartada', 'bloqueada', 'ja_cliente')),
     motivo_descarte TEXT,
