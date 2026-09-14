@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Fila de revisão{% endblock %}
+{% block content %}
+<h1>Fila de revisão</h1>
+{% if mensagens %}
+{% for m in mensagens %}
+<div class="card" style="width: 100%; margin-bottom: 12px;">
+    <p><strong>{{ m.razao_social }}</strong> → {{ m.contato_nome }}</p>
+    <pre style="white-space: pre-wrap; font-family: inherit;">{{ m.conteudo_gerado }}</pre>
+    <form method="post" action="/revisao/{{ m.id }}/aprovar" style="display:inline;">
+        <button type="submit">Aprovar</button>
+    </form>
+    <form method="post" action="/revisao/{{ m.id }}/rejeitar" style="display:inline;">
+        <button type="submit">Rejeitar</button>
+    </form>
+</div>
+{% endfor %}
+{% else %}
+<p class="empty-state">Nenhuma mensagem aguardando revisão.</p>
+{% endif %}
+{% endblock %}

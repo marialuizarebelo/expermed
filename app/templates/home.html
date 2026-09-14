@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Visão geral{% endblock %}
+{% block content %}
+<h1>Visão geral</h1>
+<div class="cards">
+    <div class="card"><div class="value">{{ total_empresas }}</div><div class="label">Empresas processadas</div></div>
+    <div class="card"><div class="value">{{ qualificadas }}</div><div class="label">Qualificadas</div></div>
+    <div class="card"><div class="value">{{ mensagens_geradas }}</div><div class="label">Mensagens geradas</div></div>
+</div>
+
+<h2>Negócios por etapa (Pipedrive)</h2>
+{% if por_etapa %}
+<table>
+    <tr><th>Etapa</th><th>Quantidade</th></tr>
+    {% for linha in por_etapa %}
+    <tr><td>{{ linha.etapa_atual or "Sem etapa" }}</td><td>{{ linha.c }}</td></tr>
+    {% endfor %}
+</table>
+{% else %}
+<p class="empty-state">Nenhum negócio registrado ainda. O pipeline ainda não foi executado.</p>
+{% endif %}
+{% endblock %}

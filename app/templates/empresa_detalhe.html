@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ empresa.razao_social if empresa else "Empresa" }}{% endblock %}
+{% block content %}
+{% if not empresa %}
+<p class="empty-state">Empresa não encontrada.</p>
+{% else %}
+<h1>{{ empresa.razao_social }}</h1>
+<p><strong>CNPJ:</strong> {{ empresa.cnpj or "-" }} · <strong>UF:</strong> {{ empresa.uf or "-" }} ·
+   <strong>Status:</strong> <span class="badge badge-{{ empresa.status }}">{{ empresa.status }}</span></p>
+{% if empresa.motivo_descarte %}<p><strong>Motivo do descarte:</strong> {{ empresa.motivo_descarte }}</p>{% endif %}
+
+<h2>Processos ({{ processos|length }})</h2>
+{% if processos %}
+<table>
+    <tr><th>Número</th><th>Tribunal</th><th>Assunto</th><th>Distribuição</th><th>Status inferido</th></tr>
+    {% for p in processos %}
+    <tr><td>{{ p.numero_processo }}</td><td>{{ p.tribunal }}</td><td>{{ p.assunto_descricao }}</td><td>{{ p.data_distribuicao }}</td><td>{{ p.status_inferido }}</td></tr>
+    {% endfor %}
+</table>
+{% else %}<p class="empty-state">Nenhum processo registrado.</p>{% endif %}
+
+<h2>Contatos ({{ contatos|length }})</h2>
+{% if contatos %}
+<table>
+    <tr><th>Nome</th><th>Cargo</th><th>Departamento</th><th>E-mail</th></tr>
+    {% for c in contatos %}
+    <tr><td>{{ c.nome }}</td><td>{{ c.cargo or "-" }}</td><td>{{ c.departamento or "-" }}</td><td>{{ c.email or "-" }}</td></tr>
+    {% endfor %}
+</table>
+{% else %}<p class="empty-state">Nenhum contato encontrado (Apollo ainda não executado).</p>{% endif %}
+
+<h2>Mensagens</h2>
+{% if mensagens %}
+<table>
+    <tr><th>Status</th><th>Criada em</th></tr>
+    {% for m in mensagens %}
+    <tr><td>{{ m.status }}</td><td>{{ m.criado_em }}</td></tr>
+    {% endfor %}
+</table>
+{% else %}<p class="empty-state">Nenhuma mensagem gerada ainda.</p>{% endif %}
+
+<h2>Negócio no Pipedrive</h2>
+{% if negocio %}
+<p>Deal ID: {{ negocio.pipedrive_deal_id }} · Etapa: {{ negocio.etapa_atual }}</p>
+{% else %}<p class="empty-state">Nenhum negócio registrado.</p>{% endif %}
+{% endif %}
+{% endblock %}

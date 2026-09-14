@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Execução{% endblock %}
+{% block content %}
+{% if not execucao %}
+<p class="empty-state">Execução não encontrada.</p>
+{% else %}
+<h1>Execução #{{ execucao.id }} — {{ execucao.tipo }}</h1>
+<p>Status: {{ execucao.status }} · Iniciado: {{ execucao.iniciado_em }} · Finalizado: {{ execucao.finalizado_em or "-" }}</p>
+<h2>Log</h2>
+{% if eventos %}
+<table>
+    <tr><th>Nível</th><th>Mensagem</th><th>Quando</th></tr>
+    {% for ev in eventos %}
+    <tr><td>{{ ev.nivel }}</td><td>{{ ev.mensagem }}</td><td>{{ ev.criado_em }}</td></tr>
+    {% endfor %}
+</table>
+{% else %}<p class="empty-state">Sem eventos registrados.</p>{% endif %}
+{% endif %}
+{% endblock %}

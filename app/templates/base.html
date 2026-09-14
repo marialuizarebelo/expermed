@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Expermed - Prospecção{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="topnav">
+        <span class="brand">Expermed · Prospecção Trabalhista</span>
+        <a href="/">Visão geral</a>
+        <a href="/empresas">Empresas</a>
+        <a href="/revisao">Fila de revisão</a>
+        <a href="/execucoes">Execuções</a>
+        <a href="/configuracoes">Configurações</a>
+    </nav>
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

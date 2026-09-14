@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Configurações{% endblock %}
+{% block content %}
+<h1>Configurações</h1>
+
+<h2>Parâmetros de qualificação</h2>
+<ul>
+    <li>Volume mínimo total: {{ volume_minimo_total }} processos</li>
+    <li>Volume mínimo nos assuntos-alvo: {{ volume_minimo_assuntos_alvo }} processos</li>
+    <li>Assuntos de interesse: {{ assuntos_interesse|join(", ") }}</li>
+</ul>
+<p class="empty-state">Edição destes parâmetros pela tela ainda não implementada — hoje ficam em app/config.py.</p>
+
+<h2>Lista de bloqueio</h2>
+<form method="post" action="/configuracoes/bloqueio/adicionar">
+    <input type="text" name="cnpj_ou_razao_social" placeholder="CNPJ ou razão social" required>
+    <input type="text" name="motivo" placeholder="Motivo (opcional)">
+    <button type="submit">Adicionar</button>
+</form>
+
+{% if bloqueios %}
+<table>
+    <tr><th>CNPJ / Razão social</th><th>Motivo</th><th>Adicionado em</th><th></th></tr>
+    {% for b in bloqueios %}
+    <tr>
+        <td>{{ b.cnpj_ou_razao_social }}</td>
+        <td>{{ b.motivo or "-" }}</td>
+        <td>{{ b.adicionado_em }}</td>
+        <td>
+            <form method="post" action="/configuracoes/bloqueio/{{ b.id }}/remover" style="display:inline;">
+                <button type="submit">Remover</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p class="empty-state">Lista de bloqueio vazia.</p>
+{% endif %}
+{% endblock %}

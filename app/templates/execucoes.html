@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Execuções{% endblock %}
+{% block content %}
+<h1>Execuções</h1>
+{% if execucoes %}
+<table>
+    <tr><th>Tipo</th><th>Status</th><th>Iniciado em</th><th>Finalizado em</th><th>Resumo</th></tr>
+    {% for ex in execucoes %}
+    <tr>
+        <td><a href="/execucoes/{{ ex.id }}">{{ ex.tipo }}</a></td>
+        <td>{{ ex.status }}</td>
+        <td>{{ ex.iniciado_em }}</td>
+        <td>{{ ex.finalizado_em or "-" }}</td>
+        <td>{{ ex.resumo or "-" }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p class="empty-state">Nenhuma execução registrada ainda. O orquestrador do pipeline ainda não foi implementado.</p>
+{% endif %}
+{% endblock %}

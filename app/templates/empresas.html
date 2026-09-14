@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Empresas{% endblock %}
+{% block content %}
+<h1>Empresas</h1>
+<form method="get" style="margin-bottom: 16px;">
+    <select name="status" onchange="this.form.submit()">
+        <option value="">Todos os status</option>
+        {% for s in ["novo", "qualificada", "descartada", "bloqueada", "ja_cliente"] %}
+        <option value="{{ s }}" {% if status_filtro == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+    </select>
+</form>
+
+{% if empresas %}
+<table>
+    <tr><th>Razão Social</th><th>CNPJ</th><th>UF</th><th>Processos relevantes</th><th>Status</th><th>Responsável</th></tr>
+    {% for e in empresas %}
+    <tr>
+        <td><a href="/empresas/{{ e.id }}">{{ e.razao_social }}</a></td>
+        <td>{{ e.cnpj or "-" }}</td>
+        <td>{{ e.uf or "-" }}</td>
+        <td>{{ e.total_processos_relevantes }}</td>
+        <td><span class="badge badge-{{ e.status }}">{{ e.status }}</span></td>
+        <td>{{ e.responsavel or "-" }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p class="empty-state">Nenhuma empresa no banco ainda. Rode a busca no DataJud para popular esta lista.</p>
+{% endif %}
+{% endblock %}
