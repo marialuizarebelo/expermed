@@ -1,11 +1,18 @@
 """Integração com a API da Apollo (busca de contatos por empresa).
 
-Fluxo em duas chamadas, exigido pela própria Apollo:
-1. api_search: busca candidatos por domínio da empresa + cargo (retorna prévia,
-   sem e-mail).
-2. people/match: revela o contato completo de um candidato (nome, e-mail se
-   disponível, LinkedIn). Essa chamada consome crédito da conta Apollo -
-   por isso só é feita para os candidatos já filtrados pela busca, não em massa.
+Fluxo:
+1. resolver_dominio_por_nome: acha o domínio da empresa pelo nome (a maioria
+   das empresas no Pipedrive não tem site cadastrado).
+2. api_search: busca todos os funcionários do domínio (sem filtro de título -
+   a Apollo normaliza cargo em inglês, então filtramos por palavra-chave
+   localmente pra não perder gente por causa de tradução/variação).
+3. people/match: revela o contato completo de um candidato (nome, e-mail se
+   disponível, telefone). Consome crédito Apollo - só é chamado pros
+   candidatos já filtrados e priorizados, no máximo MAX_CONTATOS_POR_EMPRESA.
+
+Prioridade: jurídico/advogado trabalhista em primeiro lugar, depois RH/SST -
+no máximo 5 contatos por empresa (mandar pra gente demais na mesma empresa
+parece spam e não é o padrão usado hoje pelo time comercial).
 """
 
 from dataclasses import dataclass
@@ -16,32 +23,34 @@ from app.config import APOLLO_API_KEY
 
 BASE_URL = "https://api.apollo.io/api/v1"
 
-# A Apollo normaliza cargos em inglês (ex.: "Attorney" em vez de "Advogado
-# Trabalhista"), então em vez de filtrar a busca por título exato (arriscado,
-# perde gente com cargo em outro idioma/variação), buscamos todos os
-# funcionários do domínio e filtramos aqui por palavra-chave no título,
-# cobrindo português e inglês.
-PALAVRAS_CHAVE_CARGO = [
-    # jurídico
+MAX_CONTATOS_POR_EMPRESA = 5
+
+# Prioridade 1 (mais relevante): jurídico e advogado trabalhista - é o que o
+# time comercial busca primeiro na prática.
+PALAVRAS_PRIORIDADE_1 = [
     "juridic", "legal", "attorney", "advogad", "advocacia", "counsel", "lawyer",
-    # trabalhista / relações de trabalho
-    "trabalhista", "labor", "labour", "employee relations", "labor relations",
-    "employment law", "labor law",
-    # RH / departamento pessoal
-    "rh", "hr ", "human resources", "recursos humanos", "personnel",
-    "departamento pessoal", "people",
-    # segurança/saúde ocupacional (relacionado aos assuntos-alvo: insalubridade,
-    # periculosidade, ergonomia, doença ocupacional)
+    "trabalhista", "labor relations", "employee relations", "employment law", "labor law",
+]
+
+# Prioridade 2: RH / departamento pessoal / segurança e saúde ocupacional
+# (relacionado aos assuntos-alvo: insalubridade, periculosidade, ergonomia).
+PALAVRAS_PRIORIDADE_2 = [
+    "rh", "hr ", "human resources", "recursos humanos", "personnel", "departamento pessoal", "people",
     "sst", "ehs", "hse", "safety", "occupational health", "saúde ocupacional",
     "segurança do trabalho", "seguranca do trabalho", "ergonom",
 ]
 
 
-def cargo_relevante(titulo: str | None) -> bool:
+def prioridade_cargo(titulo: str | None) -> int | None:
+    """Retorna 1 (jurídico/trabalhista), 2 (RH/SST) ou None (não relevante)."""
     if not titulo:
-        return False
+        return None
     titulo_lower = titulo.lower()
-    return any(palavra in titulo_lower for palavra in PALAVRAS_CHAVE_CARGO)
+    if any(p in titulo_lower for p in PALAVRAS_PRIORIDADE_1):
+        return 1
+    if any(p in titulo_lower for p in PALAVRAS_PRIORIDADE_2):
+        return 2
+    return None
 
 
 class ApolloNaoConfigurado(Exception):
@@ -69,11 +78,22 @@ def _headers() -> dict:
     }
 
 
-def buscar_candidatos_por_dominio(dominio: str, max_paginas: int = 5, por_pagina: int = 100) -> list[str]:
-    """Busca, no domínio da empresa, os funcionários com cargo relevante
-    (jurídico/RH/trabalhista/SST). Busca sem filtro de título na Apollo (pouco
-    confiável entre idiomas) e filtra localmente por palavra-chave, varrendo
-    várias páginas pra não perder gente relevante em empresas grandes."""
+def resolver_dominio_por_nome(nome_empresa: str) -> str | None:
+    """Acha o domínio de e-mail da empresa pelo nome (a maioria das empresas
+    do Pipedrive não tem site cadastrado)."""
+    payload = {"q_organization_name": nome_empresa, "per_page": 5}
+    resp = requests.post(f"{BASE_URL}/mixed_companies/search", headers=_headers(), json=payload, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+    for org in data.get("organizations") or data.get("accounts") or []:
+        if org.get("primary_domain"):
+            return org["primary_domain"]
+    return None
+
+
+def _candidatos_priorizados_por_dominio(dominio: str, max_paginas: int = 5, por_pagina: int = 100) -> list[dict]:
+    """Busca funcionários do domínio, filtra por cargo relevante e ordena por
+    prioridade (jurídico/trabalhista antes de RH/SST)."""
     candidatos = []
     for pagina in range(1, max_paginas + 1):
         payload = {
@@ -83,11 +103,15 @@ def buscar_candidatos_por_dominio(dominio: str, max_paginas: int = 5, por_pagina
         }
         resp = requests.post(f"{BASE_URL}/mixed_people/api_search", headers=_headers(), json=payload, timeout=30)
         resp.raise_for_status()
-        data = resp.json()
-        pessoas = data.get("people", [])
-        candidatos.extend(p["id"] for p in pessoas if cargo_relevante(p.get("title")))
+        pessoas = resp.json().get("people", [])
+        for p in pessoas:
+            prioridade = prioridade_cargo(p.get("title"))
+            if prioridade is not None:
+                candidatos.append({"id": p["id"], "prioridade": prioridade, "has_email": p.get("has_email")})
         if len(pessoas) < por_pagina:
             break  # última página
+    # prioridade 1 primeiro; dentro da mesma prioridade, quem já tem e-mail disponível primeiro
+    candidatos.sort(key=lambda c: (c["prioridade"], not c["has_email"]))
     return candidatos
 
 
@@ -113,14 +137,24 @@ def revelar_contato(apollo_id: str) -> ContatoEncontrado | None:
     )
 
 
-def buscar_contatos_da_empresa(dominio: str, max_paginas: int = 5) -> list[ContatoEncontrado]:
-    """Busca e revela TODOS os contatos relevantes de uma empresa (jurídico,
-    RH, trabalhista, SST) - quanto mais gente certa encontrada, maior a
-    chance de alguém responder."""
-    candidatos = buscar_candidatos_por_dominio(dominio, max_paginas=max_paginas)
+def buscar_contatos_da_empresa(
+    nome_empresa: str, dominio: str | None = None, limite: int = MAX_CONTATOS_POR_EMPRESA
+) -> list[ContatoEncontrado]:
+    """Busca até `limite` contatos de jurídico/RH/SST de uma empresa, por
+    nome (resolve o domínio sozinho) ou por domínio já conhecido.
+    Prioriza jurídico/advogado trabalhista, e só chama e-mails de contatos
+    que efetivamente têm e-mail ou telefone disponível."""
+    if not dominio:
+        dominio = resolver_dominio_por_nome(nome_empresa)
+    if not dominio:
+        return []
+
+    candidatos = _candidatos_priorizados_por_dominio(dominio)
     contatos = []
-    for apollo_id in candidatos:
-        contato = revelar_contato(apollo_id)
-        if contato:
+    for candidato in candidatos:
+        if len(contatos) >= limite:
+            break
+        contato = revelar_contato(candidato["id"])
+        if contato and (contato.email or contato.telefone):
             contatos.append(contato)
     return contatos
