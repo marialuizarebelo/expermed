@@ -78,10 +78,48 @@ def _headers() -> dict:
     }
 
 
-def resolver_dominio_por_nome(nome_empresa: str) -> str | None:
-    """Acha o domínio de e-mail da empresa pelo nome (a maioria das empresas
-    do Pipedrive não tem site cadastrado)."""
-    payload = {"q_organization_name": nome_empresa, "per_page": 5}
+# Sufixos de razão social que atrapalham o match por nome na Apollo (o nome
+# comercial cadastrado lá raramente inclui "LTDA", "S.A." etc).
+_SUFIXOS_RAZAO_SOCIAL = [
+    " LTDA", " S.A.", " S/A", " SA", " EIRELI", " EPP", " ME",
+    " INDUSTRIA E COMERCIO", " IND E COM", " COMERCIO E INDUSTRIA",
+]
+
+
+# Nomes de empresa no Pipedrive costumam vir em CAIXA ALTA sem acento (padrão
+# de cadastro na Receita Federal). A busca por nome da Apollo é sensível a
+# acento - "Alimentacao" não bate, só "Alimentação" bate - então, se a busca
+# direta falhar, tentamos de novo restaurando os acentos mais comuns em nome
+# de empresa brasileira.
+_PALAVRAS_COM_ACENTO = {
+    "alimentacao": "alimentação", "comercio": "comércio", "industria": "indústria",
+    "construcao": "construção", "distribuicao": "distribuição", "servicos": "serviços",
+    "seguranca": "segurança", "participacoes": "participações", "administracao": "administração",
+    "importacao": "importação", "exportacao": "exportação", "associacao": "associação",
+    "producao": "produção", "logistica": "logística", "agropecuaria": "agropecuária",
+    "mineracao": "mineração", "geracao": "geração", "comunicacao": "comunicação",
+    "manutencao": "manutenção", "vigilancia": "vigilância", "engenharia": "engenharia",
+}
+
+
+def restaurar_acentos(nome: str) -> str:
+    palavras = nome.split()
+    return " ".join(_PALAVRAS_COM_ACENTO.get(p.lower(), p) for p in palavras)
+
+
+def limpar_nome_empresa(nome_empresa: str) -> str:
+    """Remove sufixos de razão social e normaliza capitalização, pra não
+    atrapalhar o match por nome na Apollo (ex.: 'LTDA' ou nome em CAIXA ALTA
+    reduzem a chance de achar a empresa certa)."""
+    nome = nome_empresa.upper()
+    for sufixo in _SUFIXOS_RAZAO_SOCIAL:
+        if nome.endswith(sufixo):
+            nome = nome[: -len(sufixo)]
+    return nome.strip().title()
+
+
+def _buscar_dominio(nome: str) -> str | None:
+    payload = {"q_organization_name": nome, "per_page": 5}
     resp = requests.post(f"{BASE_URL}/mixed_companies/search", headers=_headers(), json=payload, timeout=30)
     resp.raise_for_status()
     data = resp.json()
@@ -89,6 +127,21 @@ def resolver_dominio_por_nome(nome_empresa: str) -> str | None:
         if org.get("primary_domain"):
             return org["primary_domain"]
     return None
+
+
+def resolver_dominio_por_nome(nome_empresa: str) -> str | None:
+    """Acha o domínio de e-mail da empresa pelo nome (a maioria das empresas
+    do Pipedrive não tem site cadastrado). Tenta o nome limpo primeiro; se
+    não achar, tenta de novo restaurando acentos comuns (a busca da Apollo é
+    sensível a acento, e nome de empresa no Pipedrive geralmente não tem)."""
+    nome_limpo = limpar_nome_empresa(nome_empresa)
+    dominio = _buscar_dominio(nome_limpo)
+    if dominio:
+        return dominio
+    nome_acentuado = restaurar_acentos(nome_limpo)
+    if nome_acentuado != nome_limpo:
+        dominio = _buscar_dominio(nome_acentuado)
+    return dominio
 
 
 def _candidatos_priorizados_por_dominio(dominio: str, max_paginas: int = 5, por_pagina: int = 100) -> list[dict]:
