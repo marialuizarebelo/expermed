@@ -143,7 +143,7 @@ foco do projeto é aumentar esse volume, automatizando o meio do processo**
 Existe uma versão navegável (HTML, um arquivo só, sem backend) publicada
 como Claude Artifact, usada pra validar layout e fluxo com a equipe antes
 de conectar ao backend real. Pedir pro usuário original da conversa
-(Rafaela/comercial) o link se precisar consultar, ou reconstruir o layout
+(Malu/comercial) o link se precisar consultar, ou reconstruir o layout
 a partir da descrição: 4 telas (Visão Geral, Fila da Mariana, Revisão de
 mensagens, Histórico), paleta verde-azulada (teal), tipografia Newsreader
 (serifada, títulos) + IBM Plex Sans (corpo) + IBM Plex Mono (números).
