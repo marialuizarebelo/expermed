@@ -22,10 +22,18 @@ BASE_URL = "https://api.apollo.io/api/v1"
 # funcionários do domínio e filtramos aqui por palavra-chave no título,
 # cobrindo português e inglês.
 PALAVRAS_CHAVE_CARGO = [
-    "juridic", "legal", "attorney", "advogad", "advocacia", "counsel",
-    "trabalhista", "labor", "labour",
+    # jurídico
+    "juridic", "legal", "attorney", "advogad", "advocacia", "counsel", "lawyer",
+    # trabalhista / relações de trabalho
+    "trabalhista", "labor", "labour", "employee relations", "labor relations",
+    "employment law", "labor law",
+    # RH / departamento pessoal
     "rh", "hr ", "human resources", "recursos humanos", "personnel",
     "departamento pessoal", "people",
+    # segurança/saúde ocupacional (relacionado aos assuntos-alvo: insalubridade,
+    # periculosidade, ergonomia, doença ocupacional)
+    "sst", "ehs", "hse", "safety", "occupational health", "saúde ocupacional",
+    "segurança do trabalho", "seguranca do trabalho", "ergonom",
 ]
 
 
@@ -61,18 +69,26 @@ def _headers() -> dict:
     }
 
 
-def buscar_candidatos_por_dominio(dominio: str, limite: int = 25) -> list[str]:
+def buscar_candidatos_por_dominio(dominio: str, max_paginas: int = 5, por_pagina: int = 100) -> list[str]:
     """Busca, no domínio da empresa, os funcionários com cargo relevante
-    (jurídico/RH/trabalhista). Busca sem filtro de título na Apollo (pouco
-    confiável entre idiomas) e filtra localmente por palavra-chave."""
-    payload = {
-        "q_organization_domains_list": [dominio],
-        "per_page": limite,
-    }
-    resp = requests.post(f"{BASE_URL}/mixed_people/api_search", headers=_headers(), json=payload, timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
-    return [p["id"] for p in data.get("people", []) if cargo_relevante(p.get("title"))]
+    (jurídico/RH/trabalhista/SST). Busca sem filtro de título na Apollo (pouco
+    confiável entre idiomas) e filtra localmente por palavra-chave, varrendo
+    várias páginas pra não perder gente relevante em empresas grandes."""
+    candidatos = []
+    for pagina in range(1, max_paginas + 1):
+        payload = {
+            "q_organization_domains_list": [dominio],
+            "per_page": por_pagina,
+            "page": pagina,
+        }
+        resp = requests.post(f"{BASE_URL}/mixed_people/api_search", headers=_headers(), json=payload, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        pessoas = data.get("people", [])
+        candidatos.extend(p["id"] for p in pessoas if cargo_relevante(p.get("title")))
+        if len(pessoas) < por_pagina:
+            break  # última página
+    return candidatos
 
 
 def revelar_contato(apollo_id: str) -> ContatoEncontrado | None:
@@ -97,9 +113,11 @@ def revelar_contato(apollo_id: str) -> ContatoEncontrado | None:
     )
 
 
-def buscar_contatos_da_empresa(dominio: str, limite: int = 25) -> list[ContatoEncontrado]:
-    """Busca e revela os contatos de uma empresa, num domínio de e-mail dado."""
-    candidatos = buscar_candidatos_por_dominio(dominio, limite=limite)
+def buscar_contatos_da_empresa(dominio: str, max_paginas: int = 5) -> list[ContatoEncontrado]:
+    """Busca e revela TODOS os contatos relevantes de uma empresa (jurídico,
+    RH, trabalhista, SST) - quanto mais gente certa encontrada, maior a
+    chance de alguém responder."""
+    candidatos = buscar_candidatos_por_dominio(dominio, max_paginas=max_paginas)
     contatos = []
     for apollo_id in candidatos:
         contato = revelar_contato(apollo_id)
