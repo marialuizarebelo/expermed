@@ -28,4 +28,4 @@ def detalhe_execucao(request: Request, execucao_id: int):
 
 
 # Rotas de ação (rodar agora / pausar) ficam como placeholders até o
-# orquestrador do pipeline (DataJud/Apollo/Pipedrive) ser implementado.
+# orquestrador do pipeline (Data Lawyer/Apollo/Pipedrive) ser implementado.

@@ -1,9 +1,36 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Form, Request
+from fastapi.responses import RedirectResponse
 
 from app.db import db_session
 from app.templates_engine import templates
 
 router = APIRouter()
+
+
+@router.post("/empresas/nova")
+def criar_empresa(
+    cnpj: str = Form(...),
+    razao_social: str = Form(...),
+    uf: str = Form(""),
+    segmento: str = Form(""),
+    responsavel: str = Form(""),
+):
+    cnpj_limpo = "".join(ch for ch in cnpj if ch.isdigit()) or None
+    with db_session() as conn:
+        conn.execute(
+            """
+            INSERT INTO empresas (cnpj, razao_social, uf, segmento, responsavel)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(cnpj) DO UPDATE SET
+                razao_social = excluded.razao_social,
+                uf = excluded.uf,
+                segmento = excluded.segmento,
+                responsavel = excluded.responsavel,
+                atualizado_em = datetime('now')
+            """,
+            (cnpj_limpo, razao_social, uf or None, segmento or None, responsavel or None),
+        )
+    return RedirectResponse("/empresas", status_code=303)
 
 
 @router.get("/empresas")

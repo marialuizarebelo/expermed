@@ -2,6 +2,17 @@
 {% block title %}Empresas{% endblock %}
 {% block content %}
 <h1>Empresas</h1>
+
+<h2>Adicionar empresa</h2>
+<form method="post" action="/empresas/nova" style="margin-bottom: 24px; display: flex; gap: 8px; flex-wrap: wrap; align-items: end;">
+    <input type="text" name="cnpj" placeholder="CNPJ" required>
+    <input type="text" name="razao_social" placeholder="Razão social" required style="flex-grow: 1; min-width: 200px;">
+    <input type="text" name="uf" placeholder="UF" maxlength="2" style="width: 60px;">
+    <input type="text" name="segmento" placeholder="Segmento">
+    <input type="text" name="responsavel" placeholder="Responsável">
+    <button type="submit">Adicionar</button>
+</form>
+
 <form method="get" style="margin-bottom: 16px;">
     <select name="status" onchange="this.form.submit()">
         <option value="">Todos os status</option>
@@ -26,6 +37,6 @@
     {% endfor %}
 </table>
 {% else %}
-<p class="empty-state">Nenhuma empresa no banco ainda. Rode a busca no DataJud para popular esta lista.</p>
+<p class="empty-state">Nenhuma empresa cadastrada ainda. Adicione empresas manualmente acima (a lista de prospecção é montada por pesquisa do time comercial).</p>
 {% endif %}
 {% endblock %}
